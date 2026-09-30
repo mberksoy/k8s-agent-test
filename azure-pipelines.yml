@@ -1,29 +1,53 @@
 trigger:
   - main
 
-pool:
-  name: 'k8s-test-pool'
-
 variables:
   imageRepository: 'k8s-agent-test'
   containerRegistry: 'hedeffilo-acr-conn'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
 
-steps:
-- script: |
-    echo "Running on agent: $(Agent.Name)"
-    echo "Testing Docker Daemon connection via DinD..."
-    docker version
-  displayName: 'Verify Environment & Docker Connectivity'
+jobs:
+  - job: TestAgentRun
+    displayName: 'Test on k8s-test-pool'
+    pool:
+      name: 'k8s-test-pool'
+    steps:
+      - script: |
+          echo "=== RUNNING ON TEST AGENT ==="
+          echo "Agent Name: $(Agent.Name)"
+          echo "Checking Docker Daemon via DinD..."
+          docker version
+        displayName: 'Verify Test Agent & Docker'
 
-- task: Docker@2
-  displayName: 'Build and Push to ACR'
-  inputs:
-    command: 'buildAndPush'
-    containerRegistry: '$(containerRegistry)'
-    repository: '$(imageRepository)'
-    dockerfile: '$(dockerfilePath)'
-    tags: |
-      $(tag)
-      latest
+      - task: Docker@2
+        displayName: 'Build and Push to ACR (Test Agent)'
+        inputs:
+          command: 'buildAndPush'
+          containerRegistry: '$(containerRegistry)'
+          repository: '$(imageRepository)'
+          dockerfile: '$(dockerfilePath)'
+          tags: |
+            test-$(tag)
+
+  - job: ProdAgentRun
+    displayName: 'Test on k8s-prod-pool'
+    pool:
+      name: 'k8s-prod-pool'
+    steps:
+      - script: |
+          echo "=== RUNNING ON PROD AGENT ==="
+          echo "Agent Name: $(Agent.Name)"
+          echo "Checking Docker Daemon via DinD..."
+          docker version
+        displayName: 'Verify Prod Agent & Docker'
+
+      - task: Docker@2
+        displayName: 'Build and Push to ACR (Prod Agent)'
+        inputs:
+          command: 'buildAndPush'
+          containerRegistry: '$(containerRegistry)'
+          repository: '$(imageRepository)'
+          dockerfile: '$(dockerfilePath)'
+          tags: |
+            prod-$(tag)
