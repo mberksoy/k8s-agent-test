@@ -3,36 +3,27 @@ trigger:
 
 pool:
   name: 'k8s-test-pool'
-  demands:
-    - Agent.Name -equals k8s-test-pool-agent
 
 variables:
-  acrName: 'hedeffiloregistry'
-  imageName: 'k8s-agent-test'
+  imageRepository: 'k8s-agent-test'
+  containerRegistry: 'hedeffilo-acr-conn'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
 
 steps:
 - script: |
     echo "Running on agent: $(Agent.Name)"
-    echo "Agent Machine: $(Agent.MachineName)"
-    echo "Agent OS: $(Agent.OS)"
-    uname -a
-  displayName: 'Verify Kubernetes Pod Agent Environment'
+    echo "Testing Docker Daemon connection via DinD..."
+    docker version
+  displayName: 'Verify Environment & Docker Connectivity'
 
-- script: |
-    python3 -m py_compile app.py
-    echo "App syntax check passed."
-  displayName: 'Run Unit / Syntax Checks'
-
-- task: AzureCLI@2
-  displayName: 'Build and Push via ACR Tasks'
+- task: Docker@2
+  displayName: 'Build and Push to ACR'
   inputs:
-    azureSubscription: 'hedeffilo-acr-conn'
-    scriptType: 'bash'
-    scriptLocation: 'inlineScript'
-    inlineScript: |
-      az acr build \
-        --registry $(acrName) \
-        --image $(imageName):$(tag) \
-        --image $(imageName):latest \
-        .
+    command: 'buildAndPush'
+    containerRegistry: '$(containerRegistry)'
+    repository: '$(imageRepository)'
+    dockerfile: '$(dockerfilePath)'
+    tags: |
+      $(tag)
+      latest
