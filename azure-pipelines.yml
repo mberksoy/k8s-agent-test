@@ -1,0 +1,46 @@
+trigger:
+  - main
+
+pool:
+  name: 'k8s-test-pool'
+  demands:
+    - Agent.Name -equals k8s-test-pool-agent
+
+variables:
+  imageName: 'k8s-agent-test'
+  tag: '$(Build.BuildId)'
+
+steps:
+- script: |
+    echo "Running on agent: $(Agent.Name)"
+    echo "Agent Machine: $(Agent.MachineName)"
+    echo "Agent OS: $(Agent.OS)"
+    uname -a
+  displayName: 'Verify Kubernetes Pod Agent Environment'
+
+- script: |
+    python3 -m py_compile app.py
+    echo "App syntax check passed."
+  displayName: 'Run Unit / Syntax Checks'
+
+# Option A: If using ACR Tasks via Azure CLI (No Docker daemon required inside pod)
+# - task: AzureCLI@2
+#   displayName: 'Build and Push via ACR Tasks'
+#   inputs:
+#     azureSubscription: 'your-azure-rm-connection'
+#     scriptType: 'bash'
+#     scriptLocation: 'inlineScript'
+#     inlineScript: |
+#       az acr build --registry hedeffiloregistry --image $(imageName):$(tag) .
+
+# Option B: If your Service Connection (hedeffilo-acr-conn) and Docker daemon/socket are present
+# - task: Docker@2
+#   displayName: 'Build and Push Docker Image'
+#   inputs:
+#     containerRegistry: 'hedeffilo-acr-conn'
+#     repository: '$(imageName)'
+#     command: 'buildAndPush'
+#     Dockerfile: '**/Dockerfile'
+#     tags: |
+#       $(tag)
+#       latest
